@@ -14,5 +14,8 @@ dashscope
 llama-index-llms-dashscope
 llama-index-embeddings-dashscope
 
+# BM25 混合检索
+llama-index-retrievers-bm25
+
 # Markdown 解析
 python-frontmatter
