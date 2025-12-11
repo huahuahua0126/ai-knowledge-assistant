@@ -19,3 +19,6 @@ llama-index-retrievers-bm25
 
 # Markdown 解析
 python-frontmatter
+
+# Word 文档解析
+python-docx

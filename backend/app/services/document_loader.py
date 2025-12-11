@@ -1,6 +1,6 @@
 """
 文档加载服务
-负责从本地文件系统加载 Markdown 笔记并提取元数据
+负责从本地文件系统加载 Markdown/TXT/Word 笔记并提取元数据
 """
 import os
 from pathlib import Path
@@ -14,9 +14,14 @@ from app.config import settings
 
 
 class DocumentLoader:
-    """文档加载器"""
+    """文档加载器 - 支持 Markdown、TXT、Word"""
     
-    SUPPORTED_EXTENSIONS = [".md", ".txt", ".markdown"]
+    # 支持的文件格式
+    MARKDOWN_EXTENSIONS = [".md", ".markdown"]
+    TEXT_EXTENSIONS = [".txt"]
+    WORD_EXTENSIONS = [".docx"]
+    
+    SUPPORTED_EXTENSIONS = MARKDOWN_EXTENSIONS + TEXT_EXTENSIONS + WORD_EXTENSIONS
     
     def __init__(self, directories: Optional[List[Path]] = None):
         """
@@ -77,14 +82,23 @@ class DocumentLoader:
             LlamaIndex Document 或 None
         """
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+            suffix = file_path.suffix.lower()
+            
+            # 根据文件类型选择加载方式
+            if suffix in self.WORD_EXTENSIONS:
+                content = self._load_word_file(file_path)
+            else:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            
+            if not content:
+                return None
             
             # 提取元数据
             metadata = self._extract_metadata(file_path, content)
             
             # 如果是 markdown，解析 frontmatter
-            if file_path.suffix.lower() in [".md", ".markdown"]:
+            if suffix in self.MARKDOWN_EXTENSIONS:
                 post = frontmatter.loads(content)
                 # 合并 frontmatter 中的元数据
                 metadata.update(post.metadata)
@@ -98,6 +112,44 @@ class DocumentLoader:
             
         except Exception as e:
             print(f"Failed to load {file_path}: {e}")
+            return None
+    
+    def _load_word_file(self, file_path: Path) -> Optional[str]:
+        """
+        加载 Word 文档 (.docx)
+        
+        Args:
+            file_path: Word 文件路径
+            
+        Returns:
+            文档文本内容
+        """
+        try:
+            from docx import Document as DocxDocument
+            
+            doc = DocxDocument(str(file_path))
+            
+            # 提取所有段落文本
+            paragraphs = []
+            for para in doc.paragraphs:
+                text = para.text.strip()
+                if text:
+                    paragraphs.append(text)
+            
+            # 提取表格内容
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+                    if row_text:
+                        paragraphs.append(row_text)
+            
+            return "\n\n".join(paragraphs)
+            
+        except ImportError:
+            print("⚠️ python-docx not installed. Run: pip install python-docx")
+            return None
+        except Exception as e:
+            print(f"Failed to load Word file {file_path}: {e}")
             return None
     
     def _extract_metadata(self, file_path: Path, content: str) -> Dict[str, Any]:
@@ -128,11 +180,21 @@ class DocumentLoader:
             "file_path": str(file_path.absolute()),
             "title": title,
             "extension": file_path.suffix,
+            "file_type": self._get_file_type(file_path.suffix.lower()),
             "created_at": datetime.fromtimestamp(stat.st_birthtime).isoformat() if hasattr(stat, 'st_birthtime') else datetime.fromtimestamp(stat.st_ctime).isoformat(),
             "updated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
             "file_size": stat.st_size,
             "word_count": len(content.split()),
         }
+    
+    def _get_file_type(self, suffix: str) -> str:
+        """获取文件类型标签"""
+        if suffix in self.MARKDOWN_EXTENSIONS:
+            return "markdown"
+        elif suffix in self.WORD_EXTENSIONS:
+            return "word"
+        else:
+            return "text"
     
     def load_single_document(self, file_path: str) -> Optional[Document]:
         """
