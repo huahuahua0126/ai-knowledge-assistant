@@ -1,0 +1,18 @@
+# FastAPI
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# LlamaIndex 核心 (使用内置向量存储，不需要 chromadb)
+llama-index-core
+llama-index-readers-file
+
+# 通义千问集成
+dashscope
+llama-index-llms-dashscope
+llama-index-embeddings-dashscope
+
+# Markdown 解析
+python-frontmatter
