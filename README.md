@@ -163,6 +163,7 @@ EMBEDDING_MODEL=text-embedding-v2
 
 将笔记文件放入 `data/notes` 目录，支持以下格式：
 - Markdown (`.md`, `.markdown`)
+- Word 文档 (`.docx`)
 - 纯文本 (`.txt`)
 
 > 💡 支持子目录，系统会递归扫描所有文件
